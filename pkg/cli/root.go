@@ -4,6 +4,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/yplog/peerkat/pkg/cli/config"
 	"github.com/yplog/peerkat/pkg/cli/net"
 )
 
@@ -28,6 +30,7 @@ func Execute() {
 
 func addSubcommandPalettes() {
 	rootCmd.AddCommand(net.Cmd)
+	rootCmd.AddCommand(config.Cmd)
 }
 
 func init() {
