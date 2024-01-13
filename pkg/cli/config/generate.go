@@ -15,6 +15,18 @@ var generateCmd = &cobra.Command{
 	Short: "Generate default config file",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
+		exist := config.Exists()
+		if exist {
+			var input string
+
+			fmt.Print("Config file already exists, overwrite? (y/n) ")
+			fmt.Scanln(&input)
+
+			if input != "y" {
+				return
+			}
+		}
+
 		generate, err := config.Generate()
 		if err != nil {
 			log.Fatal(err)
