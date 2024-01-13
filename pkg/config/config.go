@@ -18,6 +18,15 @@ type ServerConfig struct {
 	Host string `yaml:"host"`
 }
 
+func (c *Config) String() string {
+	configString, err := yaml.Marshal(c)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return string(configString)
+}
+
 func Exists() bool {
 	configFilePath, err := Path()
 	if err != nil {

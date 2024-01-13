@@ -21,7 +21,7 @@ var readCmd = &cobra.Command{
 		}
 
 		if read != nil {
-			fmt.Printf("Config file content: %+v\n", *read)
+			fmt.Println(read.String())
 			return
 		}
 
