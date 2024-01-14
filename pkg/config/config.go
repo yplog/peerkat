@@ -14,8 +14,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port int    `yaml:"port"`
-	Host string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Host     string `yaml:"host"`
+	Protocol string `yaml:"protocol"`
 }
 
 func (c *Config) String() string {
@@ -25,6 +26,15 @@ func (c *Config) String() string {
 	}
 
 	return string(configString)
+}
+
+func (c *Config) Url() string {
+	config, err := Read()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return fmt.Sprintf("%s://%s:%d", config.Server.Protocol, config.Server.Host, config.Server.Port)
 }
 
 func Exists() bool {
@@ -80,8 +90,9 @@ func Read() (*Config, error) {
 func Generate() (string, error) {
 	config := Config{
 		Server: ServerConfig{
-			Port: 8080,
-			Host: "localhost",
+			Port:     8080,
+			Host:     "localhost",
+			Protocol: "https",
 		},
 	}
 
