@@ -1,6 +1,10 @@
-# Peerkat - Peer to Peer File Sharing Application
+# Peerkat
 
-Peerkat is a peer-to-peer file sharing application that allows users to easily share files. This README file provides information about the usage, installation, and key features of the application.
+<p align="center">
+    <img src="https://yalinpala.dev/projects/peerkat.png" alt="peerkat logo"  width="250" height="250">
+</p>
+
+Peerkat is a peer-to-peer file sharing application that allows users to easily share files.
 
 ## Table of Contents
 
