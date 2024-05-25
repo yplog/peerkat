@@ -14,9 +14,14 @@ func main() {
 	relayAddr, _ := reader.ReadString('\n')
 	relayAddr = relayAddr[:len(relayAddr)-1]
 
+	fmt.Print("Enter peer address: ")
+	peerAddr, _ := reader.ReadString('\n')
+	peerAddr = peerAddr[:len(peerAddr)-1]
+
 	fmt.Print("Relay address: ", relayAddr, "\n")
 	fmt.Println("Starting peerkat node...")
 
-	peerNode := node.New(relayAddr)
+	peerNode := node.New(relayAddr, peerAddr)
+
 	peerNode.Start()
 }
