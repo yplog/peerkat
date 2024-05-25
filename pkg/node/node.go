@@ -35,6 +35,8 @@ func New(relayAddrStr string, peerAddrStr string) *Node {
 
 	log.Default().Println("Node ID:", node.ID().String())
 	log.Default().Println("Node address:", node.Addrs()[0].String())
+	// full address
+	log.Default().Println("Node multiaddress:", node.Addrs()[0].String()+"/p2p/"+node.ID().String())
 
 	return &Node{
 		relayAddrStr: relayAddrStr,
