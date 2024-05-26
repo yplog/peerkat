@@ -47,9 +47,6 @@ func New(relayAddrStr string, peerAddrStr string) *Node {
 }
 
 func (n *Node) Start() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	relayAddr, err := multiaddr.NewMultiaddr(n.relayAddrStr)
 	if err != nil {
 		log.Fatalf("failed to parse relay address: %v", err)
@@ -68,9 +65,9 @@ func (n *Node) Start() {
 	log.Default().Println("Connected to relay!")
 
 	if n.peerAddrStr == "" {
-		startPeer(ctx, n.Host, handleStream)
+		startPeer(n.Host, handleStream)
 	} else {
-		rw, err := startPeerAndConnect(ctx, n.Host, n.peerAddrStr)
+		rw, err := startPeerAndConnect(n.Host, n.peerAddrStr)
 		if err != nil {
 			log.Println(err)
 			return
@@ -140,7 +137,7 @@ func writeData(rw *bufio.ReadWriter) {
 	}
 }
 
-func startPeer(ctx context.Context, h host.Host, streamHandler network.StreamHandler) {
+func startPeer(h host.Host, streamHandler network.StreamHandler) {
 	h.SetStreamHandler("/chat/1.0.0", streamHandler)
 
 	var port string
@@ -161,7 +158,7 @@ func startPeer(ctx context.Context, h host.Host, streamHandler network.StreamHan
 	log.Println("Waiting for incoming connection")
 }
 
-func startPeerAndConnect(ctx context.Context, h host.Host, destination string) (*bufio.ReadWriter, error) {
+func startPeerAndConnect(h host.Host, destination string) (*bufio.ReadWriter, error) {
 	log.Println("This node's multi addresses:")
 	for _, la := range h.Addrs() {
 		log.Printf(" - %v\n", la)
