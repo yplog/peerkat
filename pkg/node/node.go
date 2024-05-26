@@ -35,8 +35,7 @@ func New(relayAddrStr string, peerAddrStr string) *Node {
 
 	log.Default().Println("Node ID:", node.ID().String())
 	log.Default().Println("Node address:", node.Addrs()[0].String())
-	// full address
-	log.Default().Println("Node multiaddress:", node.Addrs()[0].String()+"/p2p/"+node.ID().String())
+	log.Default().Println("Node multi address:", node.Addrs()[0].String()+"/p2p/"+node.ID().String())
 
 	return &Node{
 		relayAddrStr: relayAddrStr,
@@ -48,6 +47,9 @@ func New(relayAddrStr string, peerAddrStr string) *Node {
 }
 
 func (n *Node) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	relayAddr, err := multiaddr.NewMultiaddr(n.relayAddrStr)
 	if err != nil {
 		log.Fatalf("failed to parse relay address: %v", err)
@@ -65,46 +67,17 @@ func (n *Node) Start() {
 
 	log.Default().Println("Connected to relay!")
 
-	if n.peerAddrStr != "" {
-		peerAddr, err := multiaddr.NewMultiaddr(n.peerAddrStr)
-		if err != nil {
-			log.Fatalf("failed to parse peer address: %v", err)
-		}
-
-		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
-		if err != nil {
-			log.Fatalf("failed to parse peer address: %v", err)
-		}
-
-		n.Host.Peerstore().AddAddrs(peerInfo.ID, peerInfo.Addrs, peerstore.PermanentAddrTTL)
-		if err := n.Host.Connect(n.ctx, *peerInfo); err != nil {
-			log.Fatalf("failed to connect to peer: %v", err)
-		}
-
-		fmt.Println("Connecting to Peer A...")
-		err = n.Host.Connect(n.ctx, *peerInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Default().Println("Connected Peer ID:", peerInfo.ID.String())
-
-		stream, err := n.Host.NewStream(n.ctx, peerInfo.ID, "/chat/1.0.0")
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		_, err = stream.Write([]byte("Hello from Peer B\n"))
-		if err != nil {
-			log.Fatalf("Failed to write to stream: %v", err)
-		}
-
-		err = stream.Close()
-		if err != nil {
-			log.Fatalf("Failed to close stream: %v", err)
-		}
+	if n.peerAddrStr == "" {
+		startPeer(ctx, n.Host, handleStream)
 	} else {
-		n.Host.SetStreamHandler("/chat/1.0.0", handleStream)
+		rw, err := startPeerAndConnect(ctx, n.Host, n.peerAddrStr)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		go writeData(rw)
+		go readData(rw)
 	}
 
 	signal.Notify(n.stopCh, syscall.SIGINT, syscall.SIGTERM)
@@ -122,20 +95,101 @@ func (n *Node) Stop() {
 	}
 }
 
-func handleStream(stream network.Stream) {
-	log.Default().Printf("Stream ID: %s\n", stream.ID())
-	r := bufio.NewReader(stream)
-	str, err := r.ReadString('\n')
-	if err != nil {
-		log.Fatal(err)
+func handleStream(s network.Stream) {
+	log.Println("Got a new stream!")
+
+	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+
+	go readData(rw)
+	go writeData(rw)
+}
+
+func readData(rw *bufio.ReadWriter) {
+	for {
+		str, _ := rw.ReadString('\n')
+
+		if str == "" {
+			return
+		}
+		if str != "\n" {
+			fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
+		}
+
+	}
+}
+
+func writeData(rw *bufio.ReadWriter) {
+	stdReader := bufio.NewReader(os.Stdin)
+
+	for {
+		fmt.Print("> ")
+		sendData, err := stdReader.ReadString('\n')
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		_, err = rw.WriteString(fmt.Sprintf("%s\n", sendData))
+		if err != nil {
+			log.Fatalf("failed to write to stream: %v", err)
+		}
+		err = rw.Flush()
+		if err != nil {
+			log.Fatalf("failed to flush writer: %v", err)
+		}
+	}
+}
+
+func startPeer(ctx context.Context, h host.Host, streamHandler network.StreamHandler) {
+	h.SetStreamHandler("/chat/1.0.0", streamHandler)
+
+	var port string
+	for _, la := range h.Network().ListenAddresses() {
+		if p, err := la.ValueForProtocol(multiaddr.P_TCP); err == nil {
+			port = p
+			break
+		}
 	}
 
-	log.Default().Printf("Received: %s", str)
-
-	err = stream.Close()
-	if err != nil {
-		log.Fatalf("Failed to close stream: %v", err)
+	if port == "" {
+		log.Println("was not able to find actual local port")
+		return
 	}
 
-	log.Default().Println("Stream closed")
+	log.Default().Println("Node Address:", h.Addrs()[0].String()+"/p2p/"+h.ID().String())
+
+	log.Println("Waiting for incoming connection")
+}
+
+func startPeerAndConnect(ctx context.Context, h host.Host, destination string) (*bufio.ReadWriter, error) {
+	log.Println("This node's multi addresses:")
+	for _, la := range h.Addrs() {
+		log.Printf(" - %v\n", la)
+	}
+	log.Println()
+
+	maddr, err := multiaddr.NewMultiaddr(destination)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	info, err := peer.AddrInfoFromP2pAddr(maddr)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	h.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
+
+	s, err := h.NewStream(context.Background(), info.ID, "/chat/1.0.0")
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	log.Println("Established connection to destination")
+
+	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+
+	return rw, nil
 }
