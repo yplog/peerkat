@@ -46,7 +46,7 @@ func New(relayAddrStr string, peerAddrStr string) *Node {
 	}
 }
 
-func (n *Node) Start() {
+func (n *Node) StartChat() {
 	relayAddr, err := multiaddr.NewMultiaddr(n.relayAddrStr)
 	if err != nil {
 		log.Fatalf("failed to parse relay address: %v", err)

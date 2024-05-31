@@ -37,5 +37,10 @@ func main() {
 
 	peerNode := node.New(*relayAddr, *peerAddr)
 
-	peerNode.Start()
+	if *mode == "chat" {
+		peerNode.StartChat()
+	} else {
+		fmt.Println("File transfer mode not implemented yet")
+		// peerNode.StartFileTransfer()
+	}
 }
