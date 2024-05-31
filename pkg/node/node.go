@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -22,11 +23,13 @@ type Node struct {
 
 	Host   host.Host
 	ctx    context.Context
+	cancel context.CancelFunc
+
 	stopCh chan os.Signal
 }
 
 func New(relayAddrStr string, peerAddrStr string) *Node {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	node, err := libp2p.New()
 	if err != nil {
@@ -41,12 +44,13 @@ func New(relayAddrStr string, peerAddrStr string) *Node {
 		relayAddrStr: relayAddrStr,
 		peerAddrStr:  peerAddrStr,
 		ctx:          ctx,
+		cancel:       cancel,
 		Host:         node,
 		stopCh:       make(chan os.Signal, 1),
 	}
 }
 
-func (n *Node) StartChat() {
+func (n *Node) ConnectRelay() {
 	relayAddr, err := multiaddr.NewMultiaddr(n.relayAddrStr)
 	if err != nil {
 		log.Fatalf("failed to parse relay address: %v", err)
@@ -61,11 +65,13 @@ func (n *Node) StartChat() {
 	if err := n.Host.Connect(n.ctx, *relayInfo); err != nil {
 		log.Fatalf("failed to connect to relay: %v", err)
 	}
+}
 
+func (n *Node) StartChat() {
 	log.Default().Println("Connected to relay!")
 
 	if n.peerAddrStr == "" {
-		startPeer(n.Host, handleStream)
+		n.startPeer()
 	} else {
 		rw, err := startPeerAndConnect(n.Host, n.peerAddrStr)
 		if err != nil {
@@ -73,75 +79,90 @@ func (n *Node) StartChat() {
 			return
 		}
 
-		go writeData(rw)
-		go readData(rw)
+		go writeData(rw, n)
+		go readData(rw, n)
 	}
 
 	signal.Notify(n.stopCh, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
+	case <-n.ctx.Done():
 	case <-n.stopCh:
 		n.Stop()
 	}
 }
 
 func (n *Node) Stop() {
+	n.cancel()
+
 	err := n.Host.Close()
 	if err != nil {
 		log.Fatalf("Failed to close node: %v", err)
 	}
 }
 
-func handleStream(s network.Stream) {
-	log.Println("Got a new stream!")
-
-	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
-
-	go readData(rw)
-	go writeData(rw)
-}
-
-func readData(rw *bufio.ReadWriter) {
+func readData(rw *bufio.ReadWriter, n *Node) {
 	for {
-		str, _ := rw.ReadString('\n')
-
-		if str == "" {
+		select {
+		case <-n.ctx.Done():
 			return
-		}
-		if str != "\n" {
-			fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
-		}
+		default:
+			str, _ := rw.ReadString('\n')
 
+			if str == "" {
+				return
+			}
+			if str != "\n" {
+				fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
+			}
+
+			if isExit(str) {
+				n.Stop()
+			}
+		}
 	}
 }
 
-func writeData(rw *bufio.ReadWriter) {
+func writeData(rw *bufio.ReadWriter, n *Node) {
 	stdReader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Print("> ")
-		sendData, err := stdReader.ReadString('\n')
-		if err != nil {
-			log.Println(err)
+		select {
+		case <-n.ctx.Done():
 			return
-		}
+		default:
+			fmt.Print("> ")
+			sendData, err := stdReader.ReadString('\n')
+			if err != nil {
+				log.Println(err)
+				return
+			}
 
-		_, err = rw.WriteString(fmt.Sprintf("%s\n", sendData))
-		if err != nil {
-			log.Fatalf("failed to write to stream: %v", err)
-		}
-		err = rw.Flush()
-		if err != nil {
-			log.Fatalf("failed to flush writer: %v", err)
+			_, err = rw.WriteString(fmt.Sprintf("%s\n", sendData))
+			if err != nil {
+				log.Fatalf("failed to write to stream: %v", err)
+			}
+			err = rw.Flush()
+			if err != nil {
+				log.Fatalf("failed to flush writer: %v", err)
+			}
+
+			if isExit(sendData) {
+				n.Stop()
+			}
 		}
 	}
 }
 
-func startPeer(h host.Host, streamHandler network.StreamHandler) {
-	h.SetStreamHandler("/chat/1.0.0", streamHandler)
+func isExit(str string) bool {
+	return strings.TrimSpace(str) == "exit"
+}
+
+func (n *Node) startPeer() {
+	n.Host.SetStreamHandler("/chat/1.0.0", n.handleStream)
 
 	var port string
-	for _, la := range h.Network().ListenAddresses() {
+	for _, la := range n.Host.Network().ListenAddresses() {
 		if p, err := la.ValueForProtocol(multiaddr.P_TCP); err == nil {
 			port = p
 			break
@@ -153,9 +174,18 @@ func startPeer(h host.Host, streamHandler network.StreamHandler) {
 		return
 	}
 
-	log.Default().Println("Node Address:", h.Addrs()[0].String()+"/p2p/"+h.ID().String())
+	log.Default().Println("Node Address:", n.Host.Addrs()[0].String()+"/p2p/"+n.Host.ID().String())
 
 	log.Println("Waiting for incoming connection")
+}
+
+func (n *Node) handleStream(s network.Stream) {
+	log.Println("Got a new stream!")
+
+	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+
+	go readData(rw, n)
+	go writeData(rw, n)
 }
 
 func startPeerAndConnect(h host.Host, destination string) (*bufio.ReadWriter, error) {

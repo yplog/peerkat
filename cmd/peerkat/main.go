@@ -37,6 +37,8 @@ func main() {
 
 	peerNode := node.New(*relayAddr, *peerAddr)
 
+	peerNode.ConnectRelay()
+
 	if *mode == "chat" {
 		peerNode.StartChat()
 	} else {
