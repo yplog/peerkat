@@ -195,13 +195,13 @@ func startPeerAndConnect(h host.Host, destination string) (*bufio.ReadWriter, er
 	}
 	log.Println()
 
-	maddr, err := multiaddr.NewMultiaddr(destination)
+	multiAddr, err := multiaddr.NewMultiaddr(destination)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	info, err := peer.AddrInfoFromP2pAddr(maddr)
+	info, err := peer.AddrInfoFromP2pAddr(multiAddr)
 	if err != nil {
 		log.Println(err)
 		return nil, err
