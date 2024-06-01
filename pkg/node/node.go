@@ -95,10 +95,14 @@ func (n *Node) StartChat() {
 func (n *Node) Stop() {
 	n.cancel()
 
+	fmt.Println("Stopping node...")
+
 	err := n.Host.Close()
 	if err != nil {
 		log.Fatalf("Failed to close node: %v", err)
 	}
+
+	log.Default().Println("Node stopped")
 }
 
 func readData(rw *bufio.ReadWriter, n *Node) {
@@ -109,15 +113,16 @@ func readData(rw *bufio.ReadWriter, n *Node) {
 		default:
 			str, _ := rw.ReadString('\n')
 
+			if isCommand(str) {
+				commandHandler(str, n)
+			}
+
 			if str == "" {
 				return
 			}
+			
 			if str != "\n" {
 				fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
-			}
-
-			if isExit(str) {
-				n.Stop()
 			}
 		}
 	}
@@ -147,15 +152,29 @@ func writeData(rw *bufio.ReadWriter, n *Node) {
 				log.Fatalf("failed to flush writer: %v", err)
 			}
 
-			if isExit(sendData) {
-				n.Stop()
+			if isCommand(sendData) {
+				commandHandler(sendData, n)
 			}
 		}
 	}
 }
 
-func isExit(str string) bool {
-	return strings.TrimSpace(str) == "exit"
+func isCommand(str string) bool {
+	return strings.HasPrefix(str, "/")
+}
+
+func commandHandler(str string, n *Node) {
+	switch strings.TrimSpace(str) {
+	case "/help":
+		fmt.Println("Available commands:")
+		fmt.Println("/help - show this message")
+		fmt.Println("/exit - exit the chat")
+	case "/exit":
+		fmt.Println("Exiting chat...")
+		n.Stop()
+	default:
+		fmt.Println("Unknown command. Type /help to see available commands")
+	}
 }
 
 func (n *Node) startPeer() {
