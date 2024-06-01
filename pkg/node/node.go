@@ -120,7 +120,7 @@ func readData(rw *bufio.ReadWriter, n *Node) {
 			if str == "" {
 				return
 			}
-			
+
 			if str != "\n" {
 				fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
 			}
