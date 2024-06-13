@@ -42,7 +42,6 @@ func main() {
 	if *mode == "chat" {
 		peerNode.StartChat()
 	} else {
-		fmt.Println("File transfer mode not implemented yet")
-		// peerNode.StartFileTransfer()
+		peerNode.StartFileTransfer()
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/yplog/peerkat/pkg/chat"
+	"github.com/yplog/peerkat/pkg/filetransfer"
 	"log"
 	"os"
 	"os/signal"
@@ -67,13 +68,38 @@ func (n *Node) ConnectRelay() {
 	}
 }
 
+func (n *Node) StartFileTransfer() {
+	log.Println("Got a new file transfer stream!")
+
+	if n.peerAddrStr == "" {
+		n.startPeer("file-transfer")
+	} else {
+		rw, err := startPeerAndConnect(n.Host, n.peerAddrStr, "file-transfer")
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		go filetransfer.ReadFileData(rw, n)
+		go filetransfer.WriteFileData(rw, n)
+	}
+
+	signal.Notify(n.stopCh, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case <-n.ctx.Done():
+	case <-n.stopCh:
+		n.Stop()
+	}
+}
+
 func (n *Node) StartChat() {
 	log.Default().Println("Connected to relay!")
 
 	if n.peerAddrStr == "" {
-		n.startPeer()
+		n.startPeer("chat")
 	} else {
-		rw, err := startPeerAndConnect(n.Host, n.peerAddrStr)
+		rw, err := startPeerAndConnect(n.Host, n.peerAddrStr, "chat")
 		if err != nil {
 			log.Println(err)
 			return
@@ -109,8 +135,14 @@ func (n *Node) Stop() {
 	log.Default().Println("Node stopped")
 }
 
-func (n *Node) startPeer() {
-	n.Host.SetStreamHandler("/chat/1.0.0", n.handleStream)
+func (n *Node) startPeer(stream string) {
+	if stream == "chat" {
+		n.Host.SetStreamHandler("/chat/1.0.0", n.handleStream)
+	}
+
+	if stream == "file-transfer" {
+		n.Host.SetStreamHandler("/file-transfer/1.0.0", n.handleFileTransferStream)
+	}
 
 	var port string
 	for _, la := range n.Host.Network().ListenAddresses() {
@@ -130,6 +162,15 @@ func (n *Node) startPeer() {
 	log.Println("Waiting for incoming connection")
 }
 
+func (n *Node) handleFileTransferStream(s network.Stream) {
+	log.Println("Got a new file transfer stream!")
+
+	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+
+	go filetransfer.ReadFileData(rw, n)
+	go filetransfer.WriteFileData(rw, n)
+}
+
 func (n *Node) handleStream(s network.Stream) {
 	log.Println("Got a new stream!")
 
@@ -139,7 +180,7 @@ func (n *Node) handleStream(s network.Stream) {
 	go chat.WriteData(rw, n)
 }
 
-func startPeerAndConnect(h host.Host, destination string) (*bufio.ReadWriter, error) {
+func startPeerAndConnect(h host.Host, destination string, stream string) (*bufio.ReadWriter, error) {
 	log.Println("This node's multi addresses:")
 	for _, la := range h.Addrs() {
 		log.Printf(" - %v\n", la)
@@ -160,7 +201,15 @@ func startPeerAndConnect(h host.Host, destination string) (*bufio.ReadWriter, er
 
 	h.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 
-	s, err := h.NewStream(context.Background(), info.ID, "/chat/1.0.0")
+	var s network.Stream
+	if stream == "chat" {
+		s, err = h.NewStream(context.Background(), info.ID, "/chat/1.0.0")
+	}
+
+	if stream == "file-transfer" {
+		s, err = h.NewStream(context.Background(), info.ID, "/file-transfer/1.0.0")
+	}
+
 	if err != nil {
 		log.Println(err)
 		return nil, err
