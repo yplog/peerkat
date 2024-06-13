@@ -18,6 +18,13 @@ import (
 	"syscall"
 )
 
+type StreamType string
+
+const (
+	ChatStream         StreamType = "chat"
+	FileTransferStream StreamType = "file-transfer"
+)
+
 type Node struct {
 	relayAddrStr string
 	peerAddrStr  string
@@ -97,9 +104,9 @@ func (n *Node) StartChat() {
 	log.Default().Println("Connected to relay!")
 
 	if n.peerAddrStr == "" {
-		n.startPeer("chat")
+		n.startPeer(ChatStream)
 	} else {
-		rw, err := startPeerAndConnect(n.Host, n.peerAddrStr, "chat")
+		rw, err := startPeerAndConnect(n.Host, n.peerAddrStr, ChatStream)
 		if err != nil {
 			log.Println(err)
 			return
@@ -118,7 +125,7 @@ func (n *Node) StartChat() {
 	}
 }
 
-func (n *Node) Done() <-chan struct{} { // Add this method
+func (n *Node) Done() <-chan struct{} {
 	return n.ctx.Done()
 }
 
@@ -135,12 +142,12 @@ func (n *Node) Stop() {
 	log.Default().Println("Node stopped")
 }
 
-func (n *Node) startPeer(stream string) {
-	if stream == "chat" {
+func (n *Node) startPeer(stream StreamType) {
+	if stream == ChatStream {
 		n.Host.SetStreamHandler("/chat/1.0.0", n.handleStream)
 	}
 
-	if stream == "file-transfer" {
+	if stream == FileTransferStream {
 		n.Host.SetStreamHandler("/file-transfer/1.0.0", n.handleFileTransferStream)
 	}
 
@@ -180,12 +187,11 @@ func (n *Node) handleStream(s network.Stream) {
 	go chat.WriteData(rw, n)
 }
 
-func startPeerAndConnect(h host.Host, destination string, stream string) (*bufio.ReadWriter, error) {
+func startPeerAndConnect(h host.Host, destination string, stream StreamType) (*bufio.ReadWriter, error) {
 	log.Println("This node's multi addresses:")
 	for _, la := range h.Addrs() {
 		log.Printf(" - %v\n", la)
 	}
-	log.Println()
 
 	multiAddr, err := multiaddr.NewMultiaddr(destination)
 	if err != nil {
@@ -202,11 +208,11 @@ func startPeerAndConnect(h host.Host, destination string, stream string) (*bufio
 	h.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 
 	var s network.Stream
-	if stream == "chat" {
+	if stream == ChatStream {
 		s, err = h.NewStream(context.Background(), info.ID, "/chat/1.0.0")
 	}
 
-	if stream == "file-transfer" {
+	if stream == FileTransferStream {
 		s, err = h.NewStream(context.Background(), info.ID, "/file-transfer/1.0.0")
 	}
 
@@ -214,6 +220,7 @@ func startPeerAndConnect(h host.Host, destination string, stream string) (*bufio
 		log.Println(err)
 		return nil, err
 	}
+	
 	log.Println("Established connection to destination")
 
 	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))

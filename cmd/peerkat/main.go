@@ -41,7 +41,10 @@ func main() {
 
 	if *mode == "chat" {
 		peerNode.StartChat()
-	} else {
+	} else if *mode == "file-transfer" {
 		peerNode.StartFileTransfer()
+	} else {
+		fmt.Println("Invalid mode")
+		os.Exit(1)
 	}
 }
