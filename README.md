@@ -4,7 +4,9 @@
     <img src="https://yalinpala.dev/projects/peerkat.png" alt="peerkat logo"  width="250" height="250">
 </p>
 
-Peerkat is a peer-to-peer file sharing and chat application that allows users to easily share files.
+Peerkat is a peer-to-peer file sharing and chat application example that allows users to easily share files.
+Also see the [Peerkat Relay](https://github.com/yplog/peerkat-relay) repository.
+
 
 ## Table of Contents
 
@@ -18,9 +20,50 @@ Peerkat is a peer-to-peer file sharing and chat application that allows users to
 
 To use the Peerkat application, you can follow the steps below:
 
+
+### Clone the repository:
+
+```bash
+    git clone git@github.com:yplog/peerkat.git
+```
+
+### Install the dependencies:
+
+```bash
+    go mod tidy
+```
+
+### Build the application:
+
+```bash
+    go build -o peerkat cmd/peerkat/main.go
+```
+
 ## Usage
 
 Using the Peerkat application is straightforward. You can follow these steps:
+
+Command line arguments:
+
+```bash
+    -help         Show help message
+    -relay        Relay server address
+    -mode         file-transfer/chat
+    -peer         Peer address
+```
+
+Usage:
+
+```bash
+    go run cmd/peerkat/main.go -relay <RELAY_ADDRESS> -mode <MODE> -peer <PEER_ADDRESS>
+```
+
+Or build the application and run:
+
+```bash
+    ./peerkat -relay <RELAY_ADDRESS> -mode <MODE> -peer <PEER_ADDRESS>
+```
+
 
 ## Key Features
 
@@ -28,7 +71,7 @@ Peerkat offers users the following key features:
 
 - **Fast and Secure File Sharing:** Share your files quickly and securely with other users.
 - **Peer-to-Peer Communication:** Direct file transfer between users without the need for a server.
-- **User-Friendly Interface:** The application has a simple and user-friendly interface for easy navigation.
+- **Chat:** Communicate with other users through the chat feature.
 
 ## Contribution
 
