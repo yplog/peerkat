@@ -3,7 +3,6 @@ package node
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -45,8 +44,6 @@ func New(relayAddrStr string, peerAddrStr string) *Node {
 	}
 
 	log.Default().Println("Node ID:", node.ID().String())
-	log.Default().Println("Node address:", node.Addrs()[0].String())
-	log.Default().Println("Node multi address:", node.Addrs()[0].String()+"/p2p/"+node.ID().String())
 
 	return &Node{
 		relayAddrStr: relayAddrStr,
@@ -132,14 +129,14 @@ func (n *Node) Done() <-chan struct{} {
 func (n *Node) Stop() {
 	n.cancel()
 
-	fmt.Println("Stopping node...")
+	log.Println("Stopping node...")
 
 	err := n.Host.Close()
 	if err != nil {
-		log.Fatalf("Failed to close node: %v", err)
+		log.Fatalln("Failed to close node: ", err)
 	}
 
-	log.Default().Println("Node stopped")
+	log.Println("Node stopped")
 }
 
 func (n *Node) startPeer(stream StreamType) {
@@ -164,9 +161,9 @@ func (n *Node) startPeer(stream StreamType) {
 		return
 	}
 
-	log.Default().Println("Node Address:", n.Host.Addrs()[0].String()+"/p2p/"+n.Host.ID().String())
+	log.Println("Node Address:", n.Host.Addrs()[0].String()+"/p2p/"+n.Host.ID().String())
 
-	log.Println("Waiting for incoming connection")
+	log.Println("Waiting for incoming connection...")
 }
 
 func (n *Node) handleFileTransferStream(s network.Stream) {
@@ -217,10 +214,10 @@ func startPeerAndConnect(h host.Host, destination string, stream StreamType) (*b
 	}
 
 	if err != nil {
-		log.Println(err)
+		log.Fatalf("Failed to create new stream to %s", destination)
 		return nil, err
 	}
-	
+
 	log.Println("Established connection to destination")
 
 	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))

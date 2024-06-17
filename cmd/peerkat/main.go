@@ -2,9 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/yplog/peerkat/pkg/node"
-	"os"
+	"log"
 )
 
 func main() {
@@ -15,25 +14,20 @@ func main() {
 	flag.Parse()
 
 	if *relayAddr == "" || *mode == "" {
-		fmt.Println("Please provide relay address and mode as flags")
-		os.Exit(1)
+		log.Fatalln("Usage: peerkat -relay <relay-address> -mode <mode> [-peer <peer-address>]")
 	}
 
 	if *mode != "chat" && *mode != "file-transfer" {
-		fmt.Println("Mode must be either 'chat' or 'file-transfer'")
-		os.Exit(1)
+		log.Fatalln("Mode must be either 'chat' or 'file-transfer'")
 	}
 
-	fmt.Print("Relay address: ", *relayAddr, "\n")
-	fmt.Print("Mode: ", *mode, "\n")
+	log.Println("Relay address: ", *relayAddr)
+	log.Println("mode: ", *mode)
 
 	if *peerAddr != "" {
-		fmt.Print("Peer address: ", *peerAddr, "\n")
+		log.Println("Peer address: ", *peerAddr)
 	}
-	fmt.Println("Starting peerkat node...")
-
-	fmt.Print("Relay address: ", relayAddr, "\n")
-	fmt.Println("Starting peerkat node...")
+	log.Println("Starting peerkat node...")
 
 	peerNode := node.New(*relayAddr, *peerAddr)
 
@@ -44,7 +38,6 @@ func main() {
 	} else if *mode == "file-transfer" {
 		peerNode.StartFileTransfer()
 	} else {
-		fmt.Println("Invalid mode")
-		os.Exit(1)
+		log.Fatalln("Invalid mode")
 	}
 }
