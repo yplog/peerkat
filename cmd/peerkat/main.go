@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/yplog/peerkat/pkg/node"
+	"github.com/yplog/peerkat/internal/node"
 	"log"
 )
 
