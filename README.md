@@ -54,6 +54,12 @@ Command line arguments:
 
 Usage:
 
+> The -peer parameter is the address of the peer you want to connect to. Do not use if you are a first user.
+
+```bash
+    go run cmd/peerkat/main.go -relay <RELAY_ADDRESS> -mode <MODE>
+```
+
 ```bash
     go run cmd/peerkat/main.go -relay <RELAY_ADDRESS> -mode <MODE> -peer <PEER_ADDRESS>
 ```
@@ -63,7 +69,6 @@ Or build the application and run:
 ```bash
     ./peerkat -relay <RELAY_ADDRESS> -mode <MODE> -peer <PEER_ADDRESS>
 ```
-
 
 ## Key Features
 
