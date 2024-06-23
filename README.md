@@ -4,7 +4,7 @@
     <img src="https://yalinpala.dev/projects/peerkat.png" alt="peerkat logo"  width="250" height="250">
 </p>
 
-Peerkat is a peer-to-peer file sharing and chat application example that allows users to easily share files.
+Peerkat is a peer-to-peer file sharing and chat application example that allows users to easily share files and chat.
 Also see the [Peerkat Relay](https://github.com/yplog/peerkat-relay) repository.
 
 
