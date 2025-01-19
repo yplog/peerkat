@@ -1,7 +1,7 @@
 # Peerkat
 
 <p align="center">
-    <img src="https://yalinpala.dev/projects/peerkat.png" alt="peerkat logo"  width="250" height="250">
+    <img src="https://www.dropbox.com/scl/fi/fodi95nxsriw4huy9ewy2/peerkat.png?rlkey=qp4ym5zxr63u54s6w1dtdtwwl&st=38fsqk6r&raw=1" alt="peerkat logo"  width="250" height="250">
 </p>
 
 Peerkat is a peer-to-peer file sharing and chat application example that allows users to easily share files and chat.
